@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Downloads and converts cifar10 data to TFRecords of TF-Example protos.
+r"""Downloads and converts cifar100 data to TFRecords of TF-Example protos.
 
 This module downloads the cifar10 data, uncompresses it, reads the files
 that make up the cifar10 data and creates two TFRecord datasets: one for train
@@ -39,29 +39,15 @@ import tensorflow as tf
 from datasets import dataset_utils
 
 # The URL where the CIFAR data can be downloaded.
-_DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
+_DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-100-binary.tar.gz'
 
 # The number of training files.
-_NUM_TRAIN_FILES = 5
+_NUM_TRAIN_FILES = 1
 
 # The height and width of each image.
 _IMAGE_SIZE = 32
 _IMAGE_COLOR_CHANNEL = 3
 
-
-# The names of the classes.
-_CLASS_NAMES = [
-    'airplane',
-    'automobile',
-    'bird',
-    'cat',
-    'deer',
-    'dog',
-    'frog',
-    'horse',
-    'ship',
-    'truck',
-]
 
 
 def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
@@ -86,11 +72,11 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
 
   with open(filename,'rb') as fid:
       all_byte = np.fromfile(fid,dtype=np.uint8)
-      one_record_len = _IMAGE_SIZE*_IMAGE_SIZE*_IMAGE_COLOR_CHANNEL + 1
+      one_record_len = _IMAGE_SIZE*_IMAGE_SIZE*_IMAGE_COLOR_CHANNEL + 2
       all_byte = all_byte.reshape((-1,one_record_len,))
-      labels = all_byte[:,0]
+      labels = all_byte[:,1]
       num_images = all_byte.shape[0]
-      images = all_byte[:,1:].reshape((num_images, 3, 32, 32))
+      images = all_byte[:,2:].reshape((num_images, 3, 32, 32))
       print('load from %s, num_images=%d' %(filename,num_images))
 
   debug = False
@@ -135,7 +121,7 @@ def _get_output_filename(dataset_dir, split_name):
   Returns:
     An absolute file path.
   """
-  return '%s/cifar10_%s.tfrecord' % (dataset_dir, split_name)
+  return '%s/cifar100_%s.tfrecord' % (dataset_dir, split_name)
 
 
 def _download_and_uncompress_dataset(dataset_dir):
@@ -170,7 +156,7 @@ def _clean_up_temporary_files(dataset_dir):
   filepath = os.path.join(dataset_dir, filename)
   tf.gfile.Remove(filepath)
 
-  tmp_dir = os.path.join(dataset_dir, 'cifar-10-batches-bin')
+  tmp_dir = os.path.join(dataset_dir, 'cifar-100-batches-bin')
   tf.gfile.DeleteRecursively(tmp_dir)
 
 
@@ -198,20 +184,20 @@ def run(dataset_dir):
     offset = 0
     for i in range(_NUM_TRAIN_FILES):
       filename = os.path.join(dataset_dir,
-                              'cifar-10-batches-bin',
-                              'data_batch_%d.bin' % (i + 1))  # 1-indexed.
+                              'cifar-100-binary',
+                              'train.bin' )  # 1-indexed.
       offset = _add_to_tfrecord(filename, tfrecord_writer, offset)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
     filename = os.path.join(dataset_dir,
-                            'cifar-10-batches-bin',
-                            'test_batch.bin')
+                            'cifar-100-binary',
+                            'test.bin')
     _add_to_tfrecord(filename, tfrecord_writer)
 
   # Finally, write the labels file:
-  labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
-  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
+  # labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
+  # dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
   # _clean_up_temporary_files(dataset_dir)
-  print('\nFinished converting the Cifar10 dataset!')
+  print('\nFinished converting the Cifar100 dataset!')

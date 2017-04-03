@@ -37,6 +37,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from datasets import download_and_convert_cifar10
+from datasets import download_and_convert_cifar100
 from datasets import download_and_convert_flowers
 from datasets import download_and_convert_mnist
 
@@ -45,7 +46,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string(
     'dataset_name',
     None,
-    'The name of the dataset to convert, one of "cifar10", "flowers", "mnist".')
+    'The name of the dataset to convert, one of "cifar10", "cifar100", "flowers", "mnist".')
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
@@ -61,6 +62,8 @@ def main(_):
 
   if FLAGS.dataset_name == 'cifar10':
     download_and_convert_cifar10.run(FLAGS.dataset_dir)
+  elif FLAGS.dataset_name == 'cifar100':
+    download_and_convert_cifar100.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'flowers':
     download_and_convert_flowers.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'mnist':
