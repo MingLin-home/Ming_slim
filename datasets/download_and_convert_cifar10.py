@@ -26,11 +26,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import cPickle
+# import cPickle
 import os
 import sys
 import tarfile
 
+import scipy.misc
 import numpy as np
 from six.moves import urllib
 import tensorflow as tf
@@ -38,13 +39,15 @@ import tensorflow as tf
 from datasets import dataset_utils
 
 # The URL where the CIFAR data can be downloaded.
-_DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+_DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
 # The number of training files.
 _NUM_TRAIN_FILES = 5
 
 # The height and width of each image.
 _IMAGE_SIZE = 32
+_IMAGE_COLOR_CHANNEL = 3
+
 
 # The names of the classes.
 _CLASS_NAMES = [
@@ -72,14 +75,25 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   Returns:
     The new offset.
   """
-  with tf.gfile.Open(filename, 'r') as f:
-    data = cPickle.load(f)
+  # with tf.gfile.Open(filename, 'r') as f:
+  #   data = cPickle.load(f)
+  #
+  # images = data['data']
+  # num_images = images.shape[0]
+  #
+  # images = images.reshape((num_images, 3, 32, 32))
+  # labels = data['labels']
 
-  images = data['data']
-  num_images = images.shape[0]
+  with open(filename,'rb') as fid:
+      all_byte = np.fromfile(fid,dtype=np.uint8)
+      one_record_len = _IMAGE_SIZE*_IMAGE_SIZE*_IMAGE_COLOR_CHANNEL + 1
+      all_byte = all_byte.reshape((-1,one_record_len,))
+      labels = all_byte[:,0]
+      num_images = all_byte.shape[0]
+      images = all_byte[:,1:].reshape((num_images, 3, 32, 32))
+      print('load from %s, num_images=%d' %(filename,num_images))
 
-  images = images.reshape((num_images, 3, 32, 32))
-  labels = data['labels']
+  debug=True
 
   with tf.Graph().as_default():
     image_placeholder = tf.placeholder(dtype=tf.uint8)
@@ -94,12 +108,18 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
 
         image = np.squeeze(images[j]).transpose((1, 2, 0))
         label = labels[j]
+        if debug:
+            debug=False
+            print(image)
+            scipy.misc.imsave('d:/debug_%s_%d.png' % (os.path.basename(filename),label),image)
+        pass # end if
+
 
         png_string = sess.run(encoded_image,
                               feed_dict={image_placeholder: image})
 
         example = dataset_utils.image_to_tfexample(
-            png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, label)
+            png_string, 'png'.encode(), _IMAGE_SIZE, _IMAGE_SIZE, label)
         tfrecord_writer.write(example.SerializeToString())
 
   return offset + num_images
@@ -149,7 +169,7 @@ def _clean_up_temporary_files(dataset_dir):
   filepath = os.path.join(dataset_dir, filename)
   tf.gfile.Remove(filepath)
 
-  tmp_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
+  tmp_dir = os.path.join(dataset_dir, 'cifar-10-batches-bin')
   tf.gfile.DeleteRecursively(tmp_dir)
 
 
@@ -169,6 +189,7 @@ def run(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
+
   dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
 
   # First, process the training data:
@@ -176,20 +197,20 @@ def run(dataset_dir):
     offset = 0
     for i in range(_NUM_TRAIN_FILES):
       filename = os.path.join(dataset_dir,
-                              'cifar-10-batches-py',
-                              'data_batch_%d' % (i + 1))  # 1-indexed.
+                              'cifar-10-batches-bin',
+                              'data_batch_%d.bin' % (i + 1))  # 1-indexed.
       offset = _add_to_tfrecord(filename, tfrecord_writer, offset)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
     filename = os.path.join(dataset_dir,
-                            'cifar-10-batches-py',
-                            'test_batch')
+                            'cifar-10-batches-bin',
+                            'test_batch.bin')
     _add_to_tfrecord(filename, tfrecord_writer)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(dataset_dir)
+  # _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Cifar10 dataset!')
