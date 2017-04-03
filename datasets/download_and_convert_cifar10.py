@@ -93,7 +93,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
       images = all_byte[:,1:].reshape((num_images, 3, 32, 32))
       print('load from %s, num_images=%d' %(filename,num_images))
 
-  debug=True
+  debug = False
 
   with tf.Graph().as_default():
     image_placeholder = tf.placeholder(dtype=tf.uint8)
@@ -156,7 +156,8 @@ def _download_and_uncompress_dataset(dataset_dir):
     print()
     statinfo = os.stat(filepath)
     print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-    tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
+
+  tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
 
 
 def _clean_up_temporary_files(dataset_dir):
