@@ -397,12 +397,14 @@ def main(_):
     #######################
     # Config model_deploy #
     #######################
+
     deploy_config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
         clone_on_cpu=FLAGS.clone_on_cpu,
         replica_id=FLAGS.task,
         num_replicas=FLAGS.worker_replicas,
         num_ps_tasks=FLAGS.num_ps_tasks)
+    print('*** using clones=%d' % FLAGS.num_clones)
 
     # Create global_step
     with tf.device(deploy_config.variables_device()):
@@ -444,6 +446,7 @@ def main(_):
       label -= FLAGS.labels_offset
 
       train_image_size = FLAGS.train_image_size or network_fn.default_image_size
+      print('train_imsge_size=%d'%(train_image_size))
 
       image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
@@ -566,6 +569,7 @@ def main(_):
     ###########################
     # Kicks off the training. #
     ###########################
+    print('*** FLAGS.max_number_of_steps=%d' % FLAGS.max_number_of_steps)
     slim.learning.train(
         train_tensor,
         logdir=FLAGS.train_dir,

@@ -51,6 +51,9 @@ def preprocess_for_train(image,
   image = tf.to_float(image)
   if padding > 0:
     image = tf.pad(image, [[padding, padding], [padding, padding], [0, 0]])
+
+  # image = tf.image.resize_images(image,(output_height,output_width))
+
   # Randomly crop a [height, width] section of the image.
   distorted_image = tf.random_crop(image,
                                    [output_height, output_width, 3])
@@ -84,6 +87,7 @@ def preprocess_for_eval(image, output_height, output_width):
   tf.summary.image('image', tf.expand_dims(image, 0))
   # Transform the image to floats.
   image = tf.to_float(image)
+  # image = tf.image.resize_images(image, (output_height, output_width))
 
   # Resize and crop if needed.
   resized_image = tf.image.resize_image_with_crop_or_pad(image,
