@@ -398,6 +398,7 @@ def main(_):
     # Config model_deploy #
     #######################
 
+
     deploy_config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
         clone_on_cpu=FLAGS.clone_on_cpu,
@@ -437,28 +438,27 @@ def main(_):
     # Create a dataset provider that loads data from the dataset #
     ##############################################################
     with tf.device(deploy_config.inputs_device()):
-      provider = slim.dataset_data_provider.DatasetDataProvider(
-          dataset,
-          num_readers=FLAGS.num_readers,
-          common_queue_capacity=20 * FLAGS.batch_size,
-          common_queue_min=10 * FLAGS.batch_size)
-      [image, label] = provider.get(['image', 'label'])
-      label -= FLAGS.labels_offset
+        provider = slim.dataset_data_provider.DatasetDataProvider(
+            dataset,
+            num_readers=FLAGS.num_readers,
+            common_queue_capacity=20 * FLAGS.batch_size,
+            common_queue_min=10 * FLAGS.batch_size)
+        [image, label] = provider.get(['image', 'label'])
+        label -= FLAGS.labels_offset
 
-      train_image_size = FLAGS.train_image_size or network_fn.default_image_size
-      print('train_imsge_size=%d'%(train_image_size))
+        train_image_size = FLAGS.train_image_size or network_fn.default_image_size
 
-      image = image_preprocessing_fn(image, train_image_size, train_image_size)
+        image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
-      images, labels = tf.train.batch(
-          [image, label],
-          batch_size=FLAGS.batch_size,
-          num_threads=FLAGS.num_preprocessing_threads,
-          capacity=5 * FLAGS.batch_size)
-      labels = slim.one_hot_encoding(
-          labels, dataset.num_classes - FLAGS.labels_offset)
-      batch_queue = slim.prefetch_queue.prefetch_queue(
-          [images, labels], capacity=2 * deploy_config.num_clones)
+        images, labels = tf.train.batch(
+            [image, label],
+            batch_size=FLAGS.batch_size,
+            num_threads=FLAGS.num_preprocessing_threads,
+            capacity=5 * FLAGS.batch_size)
+        labels = slim.one_hot_encoding(
+            labels, dataset.num_classes - FLAGS.labels_offset)
+        batch_queue = slim.prefetch_queue.prefetch_queue(
+            [images, labels], capacity=2 * deploy_config.num_clones)
 
     ####################
     # Define the model #
