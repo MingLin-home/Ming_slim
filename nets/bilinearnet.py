@@ -152,7 +152,7 @@ def BilinearNet(images, num_classes=10, is_training=False,
                              initializer=tf.truncated_normal_initializer(stddev=0.1),
                              regularizer=slim.l2_regularizer(weight_decay),
                              )
-    Z4 = slim.model_variable('Z3',
+    Z4 = slim.model_variable('Z4',
                              shape=[1, 1, 1, 8, rank_k2, rank_k1],
                              initializer=tf.truncated_normal_initializer(stddev=0.1),
                              regularizer=slim.l2_regularizer(weight_decay),

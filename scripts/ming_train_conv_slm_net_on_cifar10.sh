@@ -1,10 +1,7 @@
 #!/bin/bash
-# Usage:
-# ./scripts/train_cifar_net_on_mnist.sh
-
 
 DATASET_NAME=cifar10
-MODEL_NAME=bilinearnet
+MODEL_NAME=ConvSLMnet_only_first_order
 PREPROCESSING=cifarnet
 
 DATASET_DIR=~/dataset_repo/${DATASET_NAME}
@@ -24,15 +21,15 @@ python train_image_classifier.py \
   --save_interval_secs=120 \
   --save_summaries_secs=120 \
   --log_every_n_steps=100 \
-  --optimizer=rmsprop \
+  --optimizer=sgd \
   --learning_rate_decay_type=polynomial \
   --learning_rate=0.1 \
   --end_learning_rate=0.000001 \
-  --num_epochs_per_decay=200 \
-  --weight_decay=0.001 \
+  --num_epochs_per_decay=100 \
+  --weight_decay=0.005 \
   --num_clones=4 \
   --clone_on_CPU=False \
-  --moving_average_decay=0.9999 \
+  --moving_average_decay=0.999 \
   2>&1 | tee -a ${TRAIN_DIR}/train_stdout.log
 
 

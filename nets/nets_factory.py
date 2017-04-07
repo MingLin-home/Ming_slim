@@ -30,6 +30,7 @@ from nets import resnet_v1
 from nets import resnet_v2
 from nets import vgg
 from nets import bilinearnet
+from nets import conv_slm
 
 slim = tf.contrib.slim
 
@@ -54,6 +55,8 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'resnet_v2_152': resnet_v2.resnet_v2_152,
                 'resnet_v2_200': resnet_v2.resnet_v2_200,
                 'bilinearnet': bilinearnet.BilinearNet,
+                'conv_slm_net':conv_slm.ConvSLMnet,
+                'ConvSLMnet_only_first_order':conv_slm.ConvSLMnet_only_first_order,
                }
 
 arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
@@ -78,6 +81,8 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'resnet_v2_152': resnet_v2.resnet_arg_scope,
                   'resnet_v2_200': resnet_v2.resnet_arg_scope,
                   'bilinearnet': bilinearnet.BilinearNet_arg_scope,
+                  'conv_slm_net': conv_slm.ConvSLMnet_arg_scope,
+                  'ConvSLMnet_only_first_order':conv_slm.ConvSLMnet_arg_scope,
                  }
 
 
