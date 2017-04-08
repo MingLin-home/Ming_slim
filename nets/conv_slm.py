@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import math
 
 import tensorflow as tf
 
@@ -47,8 +48,8 @@ def ConvSLMnet_only_first_order(images, num_classes=10, is_training=False,
 
   end_points = {}
   num_cnn_filters = 64
-  W_rank = 10
-  M_rank = 10
+  fc_rank1 = 380
+  fc_rank2 = 190
 
   with tf.variable_scope(scope, 'ConvSLMnet', [images, num_classes]):
 
@@ -64,19 +65,56 @@ def ConvSLMnet_only_first_order(images, num_classes=10, is_training=False,
     layer3 = slim.max_pool2d(layer3, [2, 2], 2, scope='pool2') # 8->4
     layer3 = tf.nn.lrn(layer3, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2') # 4*4
 
+    layer1 = slim.flatten(layer1)
     layer2 = slim.flatten(layer2)
     layer3 = slim.flatten(layer3)
 
 
     X = tf.concat([layer2,layer3],axis=1)
+    X = slim.dropout(X, dropout_keep_prob, is_training=is_training,
+                       scope='dropout3')
+
     dim_X = num_cnn_filters*(8*8+4*4)
 
-    W_matrix = slim.model_variable('W_matrix',
-                                    shape=[dim_X,num_classes],
-                                    initializer=tf.random_normal_initializer(stddev=0.01/dim_X/num_classes),
+    # Z0 = slim.model_variable('Z0',
+    #                          shape=[dim_X, num_classes,W_rank],
+    #                          initializer=tf.random_normal_initializer(stddev=0.01/dim_X/num_classes),
+    #                          regularizer=slim.l2_regularizer(weight_decay),
+    #                          )
+    #
+    # Z1 = slim.model_variable('Z1',
+    #                          shape=[1, 336, num_classes,W_rank],
+    #                          initializer=tf.random_normal_initializer(stddev=0.01/dim_X/num_classes),
+    #                          regularizer=slim.l2_regularizer(weight_decay),
+    #                          )
+    # Z2 = slim.model_variable('Z2',
+    #                          shape=[1, 1, 24, num_classes, W_rank],
+    #                          initializer=tf.random_normal_initializer(stddev=0.01 / dim_X / num_classes),
+    #                          regularizer=slim.l2_regularizer(weight_decay),
+    #                          )
+
+    W1_matrix = slim.model_variable('W1_matrix',
+                                    shape=[dim_X,fc_rank1],
+                                    initializer=tf.random_normal_initializer(stddev=1.0/math.sqrt(dim_X*fc_rank1)),
                                     regularizer=slim.l2_regularizer(weight_decay),
                                     )
-    Y1 = tf.matmul(X,W_matrix)
+    W2_matrix = slim.model_variable('W2_matrix',
+                                    shape=[fc_rank1,fc_rank2],
+                                    initializer=tf.random_normal_initializer(stddev=1.0/math.sqrt(fc_rank1*fc_rank2)),
+                                    regularizer=slim.l2_regularizer(weight_decay),
+                                    )
+
+    W3_matrix = slim.model_variable('W3_matrix',
+                                    shape=[fc_rank2, num_classes],
+                                    initializer=tf.random_normal_initializer(stddev=1.0/math.sqrt(fc_rank2*num_classes)),
+                                    regularizer=None,
+                                    )
+
+    # W_matrix = Z0*Z1
+    # W_matrix = tf.reduce_sum(W_matrix,axis=3)
+    # W_matrix = tf.reshape(W_matrix,[-1,num_classes])
+
+    Y1 = tf.matmul(tf.matmul(tf.matmul(X,W1_matrix), W2_matrix), W3_matrix)
 
 
     bias1 = slim.model_variable('bias1',
