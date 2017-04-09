@@ -31,6 +31,7 @@ from nets import resnet_v2
 from nets import vgg
 from nets import bilinearnet
 from nets import conv_slm
+from nets import low_rank_tensor_net
 
 slim = tf.contrib.slim
 
@@ -55,8 +56,11 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'resnet_v2_152': resnet_v2.resnet_v2_152,
                 'resnet_v2_200': resnet_v2.resnet_v2_200,
                 'bilinearnet': bilinearnet.BilinearNet,
-                'conv_slm_net':conv_slm.ConvSLMnet,
+                'ConvSLMnet':conv_slm.ConvSLMnet,
+                'ConvSLMnet_fc34':conv_slm.ConvSLMnet_fc34,
                 'ConvSLMnet_only_first_order':conv_slm.ConvSLMnet_only_first_order,
+                'lowrank_matrix_net': low_rank_tensor_net.lowrank_matrix_net,
+                'tensor_fold_net_64times64': low_rank_tensor_net.tensor_fold_net_64times64,
                }
 
 arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
@@ -80,13 +84,16 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'resnet_v2_101': resnet_v2.resnet_arg_scope,
                   'resnet_v2_152': resnet_v2.resnet_arg_scope,
                   'resnet_v2_200': resnet_v2.resnet_arg_scope,
-                  'bilinearnet': bilinearnet.BilinearNet_arg_scope,
-                  'conv_slm_net': conv_slm.ConvSLMnet_arg_scope,
-                  'ConvSLMnet_only_first_order':conv_slm.ConvSLMnet_arg_scope,
+                  'bilinearnet': cifarnet.cifarnet_arg_scope,
+                  'ConvSLMnet': cifarnet.cifarnet_arg_scope,
+                  'ConvSLMnet_fc34': cifarnet.cifarnet_arg_scope,
+                  'ConvSLMnet_only_first_order': cifarnet.cifarnet_arg_scope,
+                  'lowrank_matrix_net': low_rank_tensor_net.ming_arg_scope,
+                  'tensor_fold_net_64times64': low_rank_tensor_net.ming_arg_scope,
                  }
 
 
-def get_network_fn(name, num_classes, weight_decay=0.001, is_training=False):
+def get_network_fn(name, num_classes, weight_decay=1e-12, is_training=False):
   """Returns a network_fn such as `logits, end_points = network_fn(images)`.
 
   Args:

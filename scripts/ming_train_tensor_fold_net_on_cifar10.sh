@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DATASET_NAME=cifar10
-MODEL_NAME=ConvSLMnet_fc34
+MODEL_NAME=tensor_fold_net_64times64
 PREPROCESSING=cifarnet
 
 DATASET_DIR=~/dataset_repo/${DATASET_NAME}
@@ -17,22 +17,21 @@ python train_image_classifier.py \
   --dataset_dir=${DATASET_DIR} \
   --dataset_split_name=train \
   --max_number_of_steps=1000000 \
-  --batch_size=128 \
+  --batch_size=32 \
   --save_interval_secs=120 \
   --save_summaries_secs=120 \
   --log_every_n_steps=100 \
-  --optimizer=rmsprop \
-  --learning_rate_decay_type=fixed \
+  --optimizer=adam \
+  --learning_rate_decay_type=polynomial \
   --learning_rate=0.01 \
-  --end_learning_rate=0.0001 \
-  --num_epochs_per_decay=100 \
-  --weight_decay=0.004 \
+  --end_learning_rate=0.0000001 \
+  --num_epochs_per_decay=1000 \
+  --weight_decay=0.001 \
   --num_clones=4 \
   --clone_on_CPU=False \
-  --moving_average_decay=0.99 \
   --moving_average_decay=0.999 \
   --summarize_gradients=True \
-  2>&1 | tee -a ${TRAIN_DIR}/train_stdout.log
+   2>&1 | tee -a ${TRAIN_DIR}/train_stdout.log
 
 
 # Run evaluation.

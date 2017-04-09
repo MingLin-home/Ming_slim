@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TRAIN_DIR=/data/minglin/output/train/cifar10/ConvSLMnet_only_first_order/
+TRAIN_DIR=/data/minglin/output/train/cifar10/ConvSLMnet_fc34/
 rm -rf ${TRAIN_DIR}
 chmod u+x scripts/ -R
 mkdir -p ${TRAIN_DIR}

@@ -28,6 +28,9 @@ from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
+tf.app.flags.DEFINE_boolean('summarize_gradients', False,
+                            'Summarize gradients')
+
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
@@ -404,8 +407,9 @@ def main(_):
         clone_on_cpu=FLAGS.clone_on_cpu,
         replica_id=FLAGS.task,
         num_replicas=FLAGS.worker_replicas,
-        num_ps_tasks=FLAGS.num_ps_tasks)
-    print('*** using clones=%d' % FLAGS.num_clones)
+        num_ps_tasks=FLAGS.num_ps_tasks,
+        )
+    tf.logging.info('***** using clones=%d *****' % FLAGS.num_clones)
 
     # Create global_step
     with tf.device(deploy_config.variables_device()):
@@ -496,6 +500,8 @@ def main(_):
       summaries.add(tf.summary.histogram('activations/' + end_point, x))
       summaries.add(tf.summary.scalar('sparsity/' + end_point,
                                       tf.nn.zero_fraction(x)))
+    pass # end for
+
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
@@ -504,6 +510,7 @@ def main(_):
     # Add summaries for variables.
     for variable in slim.get_model_variables():
       summaries.add(tf.summary.histogram(variable.op.name, variable))
+
 
     #################################
     # Configure the moving averages #
@@ -547,6 +554,10 @@ def main(_):
         var_list=variables_to_train)
     # Add total_loss to summary.
     summaries.add(tf.summary.scalar('total_loss', total_loss))
+    
+    if FLAGS.summarize_gradients:
+      tf.logging.info('********* summary gradients  ******')
+      summaries |= set(model_deploy._add_gradients_summaries(clones_gradients))
 
     # Create gradient updates.
     grad_updates = optimizer.apply_gradients(clones_gradients,

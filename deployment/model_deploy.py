@@ -464,9 +464,9 @@ def _add_gradients_summaries(grads_and_vars):
         grad_values = grad.values
       else:
         grad_values = grad
-      summaries.append(tf.summary.histogram(var.op.name + ':gradient',
+      summaries.append(tf.summary.histogram(var.op.name + '_gradient',
                                             grad_values))
-      summaries.append(tf.summary.histogram(var.op.name + ':gradient_norm',
+      summaries.append(tf.summary.histogram(var.op.name + '_gradient_norm',
                                             tf.global_norm([grad_values])))
     else:
       tf.logging.info('Var %s has no gradient', var.op.name)
