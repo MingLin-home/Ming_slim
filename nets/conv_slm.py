@@ -271,38 +271,74 @@ def ConvSLMnet_fc34(images, num_classes=10, is_training=False,
   
   end_points = {}
   W_rank = 10
-  M_rank = 128
+  M_rank = 398
+  conv_filter_num = 128
   
   with tf.variable_scope(scope, 'ConvSLMnet', [images, num_classes]):
-    net = slim.conv2d(images, 64, [5, 5], scope='conv1')  # 32*32
-    end_points['conv1'] = net
-    net = slim.max_pool2d(net, [2, 2], 2, scope='pool1')  # 32*32 -> 16*16
-    end_points['pool1'] = net
-    net = tf.nn.lrn(net, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm1')
-    net = slim.conv2d(net, 64, [5, 5], scope='conv2')
-    end_points['conv2'] = net
-    net = tf.nn.lrn(net, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
-    net = slim.max_pool2d(net, [2, 2], 2, scope='pool2')  # 16*16 -> 8*8
-    end_points['pool2'] = net
-    net = slim.flatten(net)
-    end_points['Flatten'] = net
-    net = slim.fully_connected(net, 384, scope='fc3')
-    end_points['fc3'] = net
+    net55 = slim.conv2d(images, conv_filter_num, [5, 5], scope='conv55_1')  # 32*32
+    end_points['conv55_1'] = net55
+    net55 = slim.max_pool2d(net55, [2, 2], 2, scope='pool55_1')  # 32*32 -> 16*16
+    end_points['pool55_1'] = net55
+    net55 = tf.nn.lrn(net55, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm55_1')
+    net55 = slim.conv2d(net55, conv_filter_num, [5, 5], scope='conv55_2')
+    end_points['conv55_2'] = net55
+    net55 = tf.nn.lrn(net55, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
+    X55_1 = slim.max_pool2d(net55, [2, 2], 2, scope='pool55_2')  # 16*16 -> 8*8
+    net55 = X55_1
+    end_points['pool55_2'] = net55
+    net55 = tf.nn.lrn(net55, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm55_3')
+    net55 = slim.max_pool2d(net55, [2, 2], 2, scope='pool55_3')  # 8*8 -> 4*4
+    end_points['pool55_3'] = net55
+    net55 = slim.flatten(net55)
+    X55_1 = slim.flatten(X55_1)
+    end_points['Flatten55'] = net55
+    X55_2 = slim.dropout(net55, dropout_keep_prob, is_training=is_training,
+                       scope='dropout_X55_2')
+    X55_1 = slim.dropout(X55_1, dropout_keep_prob, is_training=is_training,
+                       scope='dropout_X55_1')
+    
+    # net22 = slim.conv2d(images, conv_filter_num, [2, 2], scope='conv2_1')  # 32*32
+    # end_points['conv22_1'] = net22
+    # net22 = slim.max_pool2d(net22, [2, 2], 2, scope='pool22_1')  # 32*32 -> 16*16
+    # end_points['pool22_1'] = net22
+    # net22 = tf.nn.lrn(net22, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm22_1')
+    # net22 = slim.conv2d(net22, conv_filter_num, [2, 2], scope='conv22_2')
+    # end_points['conv22_2'] = net22
+    # net22 = tf.nn.lrn(net22, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm2')
+    # X22_1 = slim.max_pool2d(net22, [2, 2], 2, scope='pool22_2')  # 16*16 -> 8*8
+    # net22 = X22_1
+    # end_points['pool22_2'] = net22
+    # net22 = tf.nn.lrn(net22, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name='norm22_3')
+    # net22 = slim.max_pool2d(net22, [2, 2], 2, scope='pool22_3')  # 8*8 -> 4*4
+    # end_points['pool22_3'] = net22
+    # net22 = slim.flatten(net22)
+    # X22_1 = slim.flatten(X22_1)
+    # end_points['Flatten22'] = net22
+    # X22_2 = slim.dropout(net22, dropout_keep_prob, is_training=is_training,
+    #                    scope='dropout_X22_2')
+    # X22_1 = slim.dropout(X22_1, dropout_keep_prob, is_training=is_training,
+    #                    scope='dropout_X22_1')
+
+    
+    # net = slim.fully_connected(net, 384, scope='fc3')
+    # end_points['fc3'] = net
     # net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
     #                    scope='dropout3')
     # net = slim.fully_connected(net, 192, scope='fc4')
     # end_points['fc4'] = net
     
-    X = net
-    dim_X = 384
+    # X = tf.concat([X55_1,X55_2,X22_1,X22_2],axis=1)
+    X = tf.concat([X55_2], axis=1)
     
-    # W_matrix = slim.model_variable('W_matrix',
-    #                                shape=[dim_X, num_classes],
-    #                                # initializer=tf.random_normal_initializer(stddev=1.0/math.sqrt(dim_X)),
-    #                                initializer=tf.zeros_initializer(),
-    #                                regularizer=slim.l2_regularizer(weight_decay),
-    #                                )
-    # Y1 = tf.matmul(X, W_matrix)
+    # dim_X = conv_filter_num*8*8 + conv_filter_num*4*4 + conv_filter_num*8*8 + conv_filter_num*4*4
+    dim_X = conv_filter_num*4*4
+    
+    W_matrix = slim.model_variable('W_matrix',
+                                   shape=[dim_X, num_classes],
+                                   initializer=tf.random_normal_initializer(stddev=0.001/math.sqrt(dim_X)),
+                                   regularizer=slim.l2_regularizer(weight_decay),
+                                   )
+    Y1 = tf.matmul(X, W_matrix)
     
     U_matrix = slim.model_variable('U_matrix',
                                    shape=[dim_X, M_rank * num_classes],
@@ -312,20 +348,31 @@ def ConvSLMnet_fc34(images, num_classes=10, is_training=False,
     
     V_matrix = slim.model_variable('V_matrix',
                                    shape=[dim_X, M_rank * num_classes],
-                                   # initializer=tf.random_normal_initializer(stddev=0.01 / dim_X / num_classes),
-                                   initializer=tf.zeros_initializer(),
+                                   initializer=tf.random_normal_initializer(stddev=0.001 / math.sqrt(dim_X)),
                                    regularizer=slim.l2_regularizer(weight_decay),
                                    )
     
     XU = tf.matmul(X, U_matrix)
     XV = tf.matmul(X, V_matrix)
+    
+    # XU = slim.relu(XU)
+    # XV = slim.relu(XV)
+    
+    # XU = slim.batch_norm(XU)
+    # XV = slim.batch_norm(XV)
+    
     Y2 = XU * XV
+    # Y2 = slim.batch_norm(Y2)
     Y2 = tf.reshape(Y2, [-1, M_rank, num_classes])
     Y2 = tf.reduce_sum(Y2, axis=1)
+    
+    
     end_points['Y2'] = Y2
     
     M_diag = tf.reshape(U_matrix * V_matrix, [-1, M_rank, num_classes])
     M_diag = tf.reduce_sum(M_diag, axis=1)
+
+    # M_diag = slim.batch_norm(M_diag)
     
     Y2_diag = tf.matmul((X * X), M_diag)
     
@@ -336,8 +383,8 @@ def ConvSLMnet_fc34(images, num_classes=10, is_training=False,
                                 initializer=tf.zeros_initializer(),
                                 regularizer=slim.l2_regularizer(weight_decay), )
 
-    logits = Y2 - Y2_diag + bias1
-    # logits = Y1 + Y2 - Y2_diag + bias1
+    # logits = Y2 - Y2_diag + bias1
+    logits = Y1 + Y2 - Y2_diag + bias1
     # logits = Y2 - Y2_diag + bias1
     
     end_points['Logits'] = logits

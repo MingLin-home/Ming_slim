@@ -21,17 +21,16 @@ python train_image_classifier.py \
   --save_interval_secs=120 \
   --save_summaries_secs=120 \
   --log_every_n_steps=100 \
-  --optimizer=rmsprop \
+  --optimizer=adam \
   --learning_rate_decay_type=fixed \
   --learning_rate=0.01 \
-  --end_learning_rate=0.0001 \
+  --end_learning_rate=0.000001 \
   --num_epochs_per_decay=100 \
   --weight_decay=0.004 \
   --num_clones=4 \
   --clone_on_CPU=False \
-  --moving_average_decay=0.99 \
   --moving_average_decay=0.999 \
-  --summarize_gradients=True \
+  --summarize_gradients=False \
   2>&1 | tee -a ${TRAIN_DIR}/train_stdout.log
 
 

@@ -256,7 +256,7 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
                                      global_step,
                                      decay_steps,
                                      FLAGS.end_learning_rate,
-                                     power=1.0,
+                                     power=0.5, # original power=1.0
                                      cycle=False,
                                      name='polynomial_decay_learning_rate')
   else:
