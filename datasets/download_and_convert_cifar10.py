@@ -83,6 +83,8 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   #
   # images = images.reshape((num_images, 3, 32, 32))
   # labels = data['labels']
+  
+  
 
   with open(filename,'rb') as fid:
       all_byte = np.fromfile(fid,dtype=np.uint8)
@@ -91,6 +93,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
       labels = all_byte[:,0]
       num_images = all_byte.shape[0]
       images = all_byte[:,1:].reshape((num_images, 3, 32, 32))
+      images = np.transpose(images,[0,2,3,1])
       print('load from %s, num_images=%d' %(filename,num_images))
 
   debug = False
