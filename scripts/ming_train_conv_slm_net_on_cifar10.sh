@@ -24,10 +24,10 @@ python train_image_classifier.py \
   --optimizer=adam \
   --learning_rate_decay_type=fixed \
   --learning_rate=0.01 \
-  --adam_beta1=0.99 \
+  --adam_beta1=0.9 \
   --adam_beta2=0.999 \
-  --opt_epsilon=0.1 \
-  --end_learning_rate=0.000001 \
+  --opt_epsilon=2 \
+  --end_learning_rate=0.0001 \
   --num_epochs_per_decay=100 \
   --weight_decay=0.004 \
   --num_clones=4 \
