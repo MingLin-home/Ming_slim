@@ -9,6 +9,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import distutils.dir_util
+import sys
 
 import tensorflow as tf
 
@@ -94,6 +95,8 @@ def main():
   model_name = 'vgg_16_2016_08_28'
   checkpoint_file = model_configure_dict[model_name]['model_filename']
   image_size = vgg.vgg_16.default_image_size
+  trainset_output_filename = os.path.join(project_config.output_dir, 'cifar10/vgg_16/trainset_feat_fc7.npz')
+  testset_output_filename = os.path.join(project_config.output_dir, 'cifar10/vgg_16/testset_feat_fc7.npz')
   
   with tf.Graph().as_default():
     # image_input is a uint8 image, shape=[height, width, color]
@@ -108,44 +111,54 @@ def main():
 
     init_fn = slim.assign_from_checkpoint_fn(checkpoint_file, slim.get_model_variables('vgg_16'))
 
-    sess = tf.InteractiveSession()
+    # sess = tf.InteractiveSession()
 
-    # with tf.Session() as sess:
-    #   Load weights
-    init_fn(sess)
-    vgg_16_fc7_layer = end_points['vgg_16/fc7']
-    train_images, train_labels, test_images, test_labels = load_cifar10()
+    with tf.Session() as sess:
+      #   Load weights
+      init_fn(sess)
+      vgg_16_fc7_layer = end_points['vgg_16/fc7']
+      train_images, train_labels, test_images, test_labels = load_cifar10()
+      print('trainset size=%d, testset size=%d' %(train_images.shape[0], test_images.shape[0]))
+
+      # extract trainset image midlayer features
+      if not os.path.isfile(trainset_output_filename):
+        distutils.dir_util.mkpath(os.path.dirname(trainset_output_filename))
+        n = train_images.shape[0]
+        fc7_feat_dim = 4096
+        trainset_fc7_feature_matrix = np.zeros((n,fc7_feat_dim)  )
+        for img_count in range(train_images.shape[0]):
+          np_image, network_input, vgg_16_fc7_output = sess.run([image_input, processed_image, vgg_16_fc7_layer],
+                                                                feed_dict={image_input: np.squeeze(train_images[img_count,:,:,:])})
+          trainset_fc7_feature_matrix[img_count,:] = vgg_16_fc7_output[0,0,0,:]
+          sys.stdout.write('\r')
+          sys.stdout.write('extract training image %d/%d' %(img_count,train_images.shape[0]))
+          sys.stdout.flush()
+        pass # end for
+      pass # end if
     
-    # export trainset image midlayer features
-    n = train_images.shape[0]
-    fc7_feat_dim = 4096
-    trainset_fc7_feature_matrix = np.zeros((n,fc7_feat_dim)  )
-    for img_count in range(train_images.shape[0]):
-      np_image, network_input, vgg_16_fc7_output = sess.run([image_input, processed_image, vgg_16_fc7_layer],
-                                                            feed_dict={image_input: np.squeeze(train_images[img_count,:,:,:])})
-      trainset_fc7_feature_matrix[img_count,:] = vgg_16_fc7_output[0,0,0,:]
-    pass # end for
-    
-    # export testset image midlayer features
-    # export trainset image midlayer features
-    n = test_images.shape[0]
-    fc7_feat_dim = 4096
-    testset_fc7_feature_matrix = np.zeros((n, fc7_feat_dim))
-    for img_count in range(test_images.shape[0]):
-      np_image, network_input, vgg_16_fc7_output = sess.run([image_input, processed_image, vgg_16_fc7_layer],
-                                                            feed_dict={image_input: np.squeeze(train_images[img_count, :, :, :])})
-      testset_fc7_feature_matrix[img_count, :] = vgg_16_fc7_output[0, 0, 0, :]
-    pass # end for
+      
+      # extract testset image midlayer features
+      if not os.path.isfile(testset_output_filename):
+        distutils.dir_util.mkpath(os.path.dirname(testset_output_filename))
+        n = test_images.shape[0]
+        fc7_feat_dim = 4096
+        testset_fc7_feature_matrix = np.zeros((n, fc7_feat_dim))
+        for img_count in range(test_images.shape[0]):
+          np_image, network_input, vgg_16_fc7_output = sess.run([image_input, processed_image, vgg_16_fc7_layer],
+                                                                feed_dict={image_input: np.squeeze(train_images[img_count, :, :, :])})
+          testset_fc7_feature_matrix[img_count, :] = vgg_16_fc7_output[0, 0, 0, :]
+          sys.stdout.write('\r')
+          sys.stdout.write('extract testing image %d/%d' % (img_count, train_images.shape[0]))
+          sys.stdout.flush()
+        pass # end for
+      pass # end if
   pass # end with tf.Graph().as_default():
 
   # export to numpy files
-  trainset_output_filename = os.path.join( project_config.output_dir,'cifar10/vgg_16/trainset_feat_fc7.npz' )
-  distutils.dir_util.mkpath(os.path.dirname(trainset_output_filename))
-  np.savez_compressed(trainset_output_filename,features=trainset_fc7_feature_matrix,labels=train_labels)
-  
-  testset_output_filename = os.path.join(project_config.output_dir, 'cifar10/vgg_16/testset_feat_fc7.npz')
-  distutils.dir_util.mkpath(os.path.dirname(testset_output_filename))
-  np.savez_compressed(testset_output_filename, features=testset_fc7_feature_matrix, labels=test_labels)
+  if not os.path.isfile(trainset_output_filename):
+    np.savez_compressed(trainset_output_filename,features=trainset_fc7_feature_matrix,labels=train_labels)
+  if not os.path.isfile(testset_output_filename):
+    np.savez_compressed(testset_output_filename, features=testset_fc7_feature_matrix, labels=test_labels)
   
 
 
