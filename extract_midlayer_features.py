@@ -80,7 +80,7 @@ def load_cifar10():
       test_images = images
       test_labels = labels
     else:
-      test_images = np.vstack([train_images, images])
+      test_images = np.vstack([test_images, images])
       test_labels = np.concatenate([test_labels, labels])
   pass  # end with
 
@@ -88,32 +88,34 @@ def load_cifar10():
 
 pass # end def
     
-    
-  
+FLAGS_batch_size = 128
+FLAGS_num_preprocessing_threads = 2
 
 def main():
   model_name = 'vgg_16_2016_08_28'
   checkpoint_file = model_configure_dict[model_name]['model_filename']
   image_size = vgg.vgg_16.default_image_size
-  trainset_output_filename = os.path.join(project_config.output_dir, 'cifar10/vgg_16/trainset_feat_fc7.npz')
-  testset_output_filename = os.path.join(project_config.output_dir, 'cifar10/vgg_16/testset_feat_fc7.npz')
+  trainset_output_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/trainset_feat_fc7.npz')
+  testset_output_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/testset_feat_fc7.npz')
   
   with tf.Graph().as_default():
     # image_input is a uint8 image, shape=[height, width, color]
     image_input = tf.placeholder(tf.uint8,shape=[32,32,3], name='image_input')
     processed_image = vgg_preprocessing.preprocess_image(image_input, image_size, image_size, is_training=False)
     processed_images = tf.expand_dims(processed_image, 0)
-    with slim.arg_scope(vgg.vgg_arg_scope()):
-      logits, end_points = vgg.vgg_16(processed_images,
-                             num_classes=1000,
-                             is_training=False)
-    pass # end with
+    with tf.device('/gpu:0'):
+      with slim.arg_scope(vgg.vgg_arg_scope()):
+        logits, end_points = vgg.vgg_16(processed_images,
+                               num_classes=1000,
+                               is_training=False)
+      pass # end with
+    pass # end with tf.device
 
     init_fn = slim.assign_from_checkpoint_fn(checkpoint_file, slim.get_model_variables('vgg_16'))
 
     # sess = tf.InteractiveSession()
 
-    with tf.Session() as sess:
+    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
       #   Load weights
       init_fn(sess)
       vgg_16_fc7_layer = end_points['vgg_16/fc7']
@@ -134,8 +136,10 @@ def main():
           sys.stdout.write('extract training image %d/%d' %(img_count,train_images.shape[0]))
           sys.stdout.flush()
         pass # end for
+        # export to numpy files
+        if not os.path.isfile(trainset_output_filename):
+          np.savez_compressed(trainset_output_filename, features=trainset_fc7_feature_matrix, labels=train_labels)
       pass # end if
-    
       
       # extract testset image midlayer features
       if not os.path.isfile(testset_output_filename):
@@ -145,20 +149,19 @@ def main():
         testset_fc7_feature_matrix = np.zeros((n, fc7_feat_dim))
         for img_count in range(test_images.shape[0]):
           np_image, network_input, vgg_16_fc7_output = sess.run([image_input, processed_image, vgg_16_fc7_layer],
-                                                                feed_dict={image_input: np.squeeze(train_images[img_count, :, :, :])})
+                                                                feed_dict={image_input: np.squeeze(test_images[img_count, :, :, :])})
           testset_fc7_feature_matrix[img_count, :] = vgg_16_fc7_output[0, 0, 0, :]
           sys.stdout.write('\r')
-          sys.stdout.write('extract testing image %d/%d' % (img_count, train_images.shape[0]))
+          sys.stdout.write('extract testing image %d/%d' % (img_count, test_images.shape[0]))
           sys.stdout.flush()
         pass # end for
+        if not os.path.isfile(testset_output_filename):
+          np.savez_compressed(testset_output_filename, features=testset_fc7_feature_matrix, labels=test_labels)
       pass # end if
   pass # end with tf.Graph().as_default():
 
-  # export to numpy files
-  if not os.path.isfile(trainset_output_filename):
-    np.savez_compressed(trainset_output_filename,features=trainset_fc7_feature_matrix,labels=train_labels)
-  if not os.path.isfile(testset_output_filename):
-    np.savez_compressed(testset_output_filename, features=testset_fc7_feature_matrix, labels=test_labels)
+  
+  
   
 
 

@@ -23,16 +23,20 @@ platform = os.path.split(platform)[1]
 config = {}
 
 config["MingYeWinDesk.platform.config"] = {}
+config["YeGPUServer.platform.config"] = {}
 
 
 config["MingYeWinDesk.platform.config"]["data_repo_dir"] = "d:/tmp/DeepLearningDir/dataset_repo/"
+config["YeGPUServer.platform.config"]["data_repo_dir"] = "/data/yelab/dataset_repo/"
 data_repo_dir = config[platform]["data_repo_dir"]
-distutils.dir_util.mkpath(data_repo_dir)
+# distutils.dir_util.mkpath(data_repo_dir)
 
 config["MingYeWinDesk.platform.config"]["model_repo_dir"] = "d:/tmp/DeepLearningDir/model_repo/"
+config["YeGPUServer.platform.config"]["model_repo_dir"] = "/data/minglin/model_repo/"
 model_repo_dir = config[platform]["model_repo_dir"]
-distutils.dir_util.mkpath(model_repo_dir)
+# distutils.dir_util.mkpath(model_repo_dir)
 
 config["MingYeWinDesk.platform.config"]["output_dir"] = "d:/tmp/DeepLearningDir/output/"
+config["YeGPUServer.platform.config"]["output_dir"] = "/data/minglin/output/"
 output_dir = config[platform]["output_dir"]
 distutils.dir_util.mkpath(output_dir)
