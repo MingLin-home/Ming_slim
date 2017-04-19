@@ -240,6 +240,7 @@ def extract_vgg_16_2016_08_28(options, parameters):
     bool_should_run_testset = True
     if os.path.isfile(testset_output_pool5_filename) and os.path.isfile(testset_output_fc6_filename) and os.path.isfile(testset_output_fc7_filename):
         bool_should_run_testset = False
+        
     
     if bool_should_run_testset:
         pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
