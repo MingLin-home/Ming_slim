@@ -103,11 +103,8 @@ def load_cifar10():
 
 pass  # end def
 
-FLAGS_batch_size = 128
-FLAGS_num_preprocessing_threads = 2
 
-
-def extract_vgg_16_features(train_images, gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=-1, is_training=False):
+def extract_vgg_16_features(train_images, gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=-1, is_training=False, ):
     """
     pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix =  extract_vgg_16_features(...)
     :return:
@@ -166,7 +163,7 @@ def extract_vgg_16_features(train_images, gpu_device_config, cpu_device_config, 
                 trainset_fc7_feature_matrix[image_count, :] = np.ravel(vgg_16_fc7_output)
     
                 if image_count % (train_images.shape[0] / 100) == 0:
-                    print('[%s] extract split_id=%d, image_count=%d, n=%d, perturb_count=%d' % (gpu_device_config, split_id, image_count, n, perturb_count))
+                    print('[%s] image_count=%d, n=%d, perturb_count=%d' % (real_gpu_device_config, image_count, n, perturb_count))
             pass  # end for
         pass # end with tf.Session
     pass # end with tf.Graph
@@ -176,19 +173,19 @@ pass # end def
 
 
 def extract_vgg_16_2016_08_28(options, parameters):
-    split_id, num_total_splits = parameters
+    num_trainset_blocks = options.num_trainset_blocks
+    num_testset_blocks = options.num_testset_blocks
+    
+    gpu_id, n_gpus = parameters
     model_name = 'vgg_16_2016_08_28'
     checkpoint_file = model_configure_dict[model_name]['model_filename']
     
-    if options.use_cpu=='True':
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
-        gpu_device_config = '/cpu:0'
-        cpu_device_config = '/cpu:0'
-    else:
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(split_id)
-        gpu_device_config = '/gpu:0'
-        cpu_device_config = '/cpu:%d' % (split_id + 1)
-    pass # end if options.use_cpu
+    
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    gpu_device_config = '/gpu:0'
+    real_gpu_device_config = str(gpu_id)
+    cpu_device_config = '/cpu:%d' % (gpu_id + 1)
+    
 
     train_images, train_labels, test_images, test_labels = load_cifar10()
 
@@ -199,78 +196,101 @@ def extract_vgg_16_2016_08_28(options, parameters):
         test_labels = test_labels[0:500]
     pass  # end if
 
-    train_index_list = np.array_split(range(train_images.shape[0]), num_total_splits)
-    train_subsplit_index = train_index_list[split_id]
+    train_index_list = np.array_split(range(train_images.shape[0]), n_gpus)
+    train_subsplit_index = train_index_list[gpu_id]
     train_images = train_images[train_subsplit_index, :]
     train_labels = train_labels[train_subsplit_index]
 
-    test_index_list = np.array_split(range(test_images.shape[0]), num_total_splits)
-    test_subsplit_index = test_index_list[split_id]
+    test_index_list = np.array_split(range(test_images.shape[0]), n_gpus)
+    test_subsplit_index = test_index_list[gpu_id]
     test_images = test_images[test_subsplit_index, :]
     test_labels = test_labels[test_subsplit_index]
 
-    print('split=%d/%d, trainset size=%d, testset size=%d' % (split_id, num_total_splits, train_images.shape[0], test_images.shape[0]))
+    print('split=%d/%d, trainset size=%d, testset size=%d' % (gpu_id, n_gpus, train_images.shape[0], test_images.shape[0]))
 
-    for perturb_count in range(options.num_perturb):
-        trainset_output_pool4_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/trainset_feat_pert%d_sp%d_pool4.npz' % (perturb_count, split_id))
-        trainset_output_pool5_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/trainset_feat_pert%d_sp%d_pool5.npz' % (perturb_count, split_id))
-        trainset_output_fc6_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/trainset_feat_pert%d_sp%d_fc6.npz' % (perturb_count, split_id))
-        trainset_output_fc7_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/trainset_feat_pert%d_sp%d_fc7.npz' % (perturb_count, split_id))
+
+    trainset_block_index_list = np.array_split( range(train_images.shape[0]), num_trainset_blocks )
     
-        bool_should_run_trainset = True
-        if os.path.isfile(trainset_output_pool4_filename) and os.path.isfile(trainset_output_pool5_filename) and os.path.isfile(trainset_output_fc6_filename) and os.path.isfile(trainset_output_fc7_filename):
-            bool_should_run_trainset = False
-        pass # end if
+    for trainset_block_count, trainset_block_index in enumerate(trainset_block_index_list):
+        for perturb_count in range(options.num_perturb):
+            trainset_output_pool4_filename = os.path.join(
+                project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/trainset_feat_pert%d_sp%d_bl%d_pool4.npz' % (perturb_count, gpu_id, trainset_block_count))
+            trainset_output_pool5_filename = os.path.join(
+                project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/trainset_feat_pert%d_sp%d_bl%d_pool5.npz' % (perturb_count, gpu_id, trainset_block_count))
+            trainset_output_fc6_filename = os.path.join(
+                project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/trainset_feat_pert%d_sp%d_bl%d_fc6.npz' % (perturb_count, gpu_id, trainset_block_count))
+            trainset_output_fc7_filename = os.path.join(
+                project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/trainset_feat_pert%d_sp%d_bl%d_fc7.npz' % (perturb_count, gpu_id, trainset_block_count))
         
-        is_training = False if perturb_count==0 else True
+            bool_should_run_trainset = True
+            if os.path.isfile(trainset_output_pool4_filename) and os.path.isfile(trainset_output_pool5_filename) and os.path.isfile(trainset_output_fc6_filename) and os.path.isfile(trainset_output_fc7_filename):
+                bool_should_run_trainset = False
+            pass  # end if
+        
+            is_training = False if perturb_count == 0 else True
+        
+            if bool_should_run_trainset:
+                pool4_feature_matrix, pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
+                    extract_vgg_16_features(train_images[trainset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=perturb_count, is_training=is_training)
+            
+                # export to numpy files
+                if not os.path.isfile(trainset_output_pool4_filename):
+                    distutils.dir_util.mkpath(os.path.dirname( trainset_output_pool4_filename ))
+                    np.savez_compressed(trainset_output_pool4_filename, features=pool4_feature_matrix, labels=train_labels)
+            
+                if not os.path.isfile(trainset_output_pool5_filename):
+                    distutils.dir_util.mkpath(os.path.dirname(trainset_output_pool5_filename))
+                    np.savez_compressed(trainset_output_pool5_filename, features=pool5_feature_matrix, labels=train_labels)
+            
+                if not os.path.isfile(trainset_output_fc6_filename):
+                    distutils.dir_util.mkpath(os.path.dirname(trainset_output_fc6_filename))
+                    np.savez_compressed(trainset_output_fc6_filename, features=fc6_feature_matrix, labels=train_labels)
+            
+                if not os.path.isfile(trainset_output_fc7_filename):
+                    distutils.dir_util.mkpath(os.path.dirname(trainset_output_fc7_filename))
+                    np.savez_compressed(trainset_output_fc7_filename, features=fc7_feature_matrix, labels=train_labels)
+            pass  # end if bool_should_run_trainset
+        pass  # end for perturb_count
+        pass
+    pass # end for trainset_block_count
 
-        if bool_should_run_trainset:
+    testset_block_index_list = np.array_split(range(test_images.shape[0]), num_testset_blocks)
+    
+    for testset_block_count, testset_block_index in enumerate(testset_block_index_list):
+        testset_output_pool4_filename = os.path.join(project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/testset_feat_sp%d_bl%d_pool4.npz' % (gpu_id, testset_block_count))
+        testset_output_pool5_filename = os.path.join(project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/testset_feat_sp%d_bl%d_pool5.npz' % (gpu_id, testset_block_count))
+        testset_output_fc6_filename = os.path.join(project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/testset_feat_sp%d_bl%d_fc6.npz' % (gpu_id, testset_block_count))
+        testset_output_fc7_filename = os.path.join(project_config.output_dir, 'midlayer_feat_debug/cifar10/vgg_16/testset_feat_sp%d_bl%d_fc7.npz' % (gpu_id, testset_block_count))
+    
+        bool_should_run_testset = True
+        if os.path.isfile(testset_output_pool4_filename) and os.path.isfile(testset_output_pool5_filename) and os.path.isfile(testset_output_fc6_filename) and os.path.isfile(testset_output_fc7_filename):
+            bool_should_run_testset = False
+    
+        if bool_should_run_testset:
             pool4_feature_matrix, pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
-                extract_vgg_16_features(train_images, gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=perturb_count, is_training=is_training)
-
+                extract_vgg_16_features(test_images[testset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, is_training=False)
+        
             # export to numpy files
-            if not os.path.isfile(trainset_output_pool4_filename):
-                np.savez_compressed(trainset_output_pool4_filename, features=pool4_feature_matrix, labels=train_labels)
-            
-            if not os.path.isfile(trainset_output_pool5_filename):
-                np.savez_compressed(trainset_output_pool5_filename, features=pool5_feature_matrix, labels=train_labels)
-
-            if not os.path.isfile(trainset_output_fc6_filename):
-                np.savez_compressed(trainset_output_fc6_filename, features=fc6_feature_matrix, labels=train_labels)
-
-            if not os.path.isfile(trainset_output_fc7_filename):
-                np.savez_compressed(trainset_output_fc7_filename, features=fc7_feature_matrix, labels=train_labels)
-        pass # end if bool_should_run_trainset
-    pass # end for perturb_count
-
-    testset_output_pool4_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/testset_feat_sp%d_pool4.npz' % (split_id))
-    testset_output_pool5_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/testset_feat_sp%d_pool5.npz' % ( split_id))
-    testset_output_fc6_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/testset_feat_sp%d_fc6.npz' % ( split_id))
-    testset_output_fc7_filename = os.path.join(project_config.output_dir, 'midlayer_feat/cifar10/vgg_16/testset_feat_sp%d_fc7.npz' % ( split_id))
-    
-    bool_should_run_testset = True
-    if os.path.isfile(testset_output_pool4_filename) and os.path.isfile(testset_output_pool5_filename) and os.path.isfile(testset_output_fc6_filename) and os.path.isfile(testset_output_fc7_filename):
-        bool_should_run_testset = False
+            if not os.path.isfile(testset_output_pool4_filename):
+                distutils.dir_util.mkpath(os.path.dirname(testset_output_pool4_filename))
+                np.savez_compressed(testset_output_pool4_filename, features=pool4_feature_matrix, labels=test_labels)
         
-    
-    if bool_should_run_testset:
-        pool4_feature_matrix, pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
-            extract_vgg_16_features(test_images, gpu_device_config, cpu_device_config, checkpoint_file, is_training=False)
-    
-        # export to numpy files
-        if not os.path.isfile(testset_output_pool4_filename):
-            np.savez_compressed(testset_output_pool4_filename, features=pool4_feature_matrix, labels=test_labels)
-            
-        if not os.path.isfile(testset_output_pool5_filename):
-            np.savez_compressed(testset_output_pool5_filename, features=pool5_feature_matrix, labels=test_labels)
-    
-        if not os.path.isfile(testset_output_fc6_filename):
-            np.savez_compressed(testset_output_fc6_filename, features=fc6_feature_matrix, labels=test_labels)
-    
-        if not os.path.isfile(testset_output_fc7_filename):
-            np.savez_compressed(testset_output_fc7_filename, features=fc7_feature_matrix, labels=test_labels)
+            if not os.path.isfile(testset_output_pool5_filename):
+                distutils.dir_util.mkpath(os.path.dirname(testset_output_pool5_filename))
+                np.savez_compressed(testset_output_pool5_filename, features=pool5_feature_matrix, labels=test_labels)
         
-    pass # end if bool_should_run_testset
+            if not os.path.isfile(testset_output_fc6_filename):
+                distutils.dir_util.mkpath(os.path.dirname(testset_output_fc6_filename))
+                np.savez_compressed(testset_output_fc6_filename, features=fc6_feature_matrix, labels=test_labels)
+        
+            if not os.path.isfile(testset_output_fc7_filename):
+                distutils.dir_util.mkpath(os.path.dirname(testset_output_fc7_filename))
+                np.savez_compressed(testset_output_fc7_filename, features=fc7_feature_matrix, labels=test_labels)
+    
+        pass  # end if bool_should_run_testset
+    pass # end for testset_block_count
+    
+
 
 
 pass # end def
@@ -278,24 +298,20 @@ pass # end def
 
 if __name__ == '__main__':
     """
-    python extract_midlayer_features.py --n_jobs=8 --num_total_splits=20 --num_perturb=2 --debug=True
+    python extract_midlayer_features.py --n_gpus=4 --num_trainset_blocks=100 --num_testset_blocks=10 --num_perturb=2 --debug=True
     """
     parser = OptionParser()
-    parser.add_option('--use_cpu', type='string', dest='use_cpu', default='False', help='Only use CPU.')
-    parser.add_option('--n_jobs', type='int', dest='n_jobs', default=1, help='number of parallel jobs.')
-    parser.add_option('-t', '--num_total_splits', type='int', dest='num_total_splits', default=1, help='number of total splits.')
-    parser.add_option('-p', '--num_perturb', type='int', dest='num_perturb', default=1, help='number of random perturbation for each image.')
+    parser.add_option('--n_gpus', type='int', dest='n_gpus', default=1, help='number of gpu.')
+    parser.add_option('--num_trainset_blocks', type='int', dest='num_trainset_blocks', default=1, help='number of data blocks to split the training dataset.')
+    parser.add_option('--num_testset_blocks', type='int', dest='num_testset_blocks', default=1, help='number of data blocks to split the testing dataset.')
+    parser.add_option('--num_perturb', type='int', dest='num_perturb', default=1, help='number of random perturbation for each image.')
     parser.add_option('--debug', type='string', dest='debug', default=False, help='run debug code.')
     (options, args) = parser.parse_args()
     
-    if options.use_cpu=='False' and (options.n_jobs!=options.num_total_splits):
-        print('when using GPU, n_jobs must equal to num_total_splits')
-        exit(1)
-        
     # generate task list
     task_list = []
-    for split_id in range(options.num_total_splits):
-        task_list.append([split_id, options.num_total_splits])
+    for gpu_id in range(options.n_gpus):
+        task_list.append([gpu_id, options.n_gpus])
     pass # end for
 
-    par_results = Parallel(n_jobs=options.n_jobs, verbose=50, batch_size=1)(delayed(extract_vgg_16_2016_08_28)(options, par_for_parameters) for par_for_parameters in task_list)
+    par_results = Parallel(n_jobs=options.n_gpus, verbose=50, batch_size=1)(delayed(extract_vgg_16_2016_08_28)(options, par_for_parameters) for par_for_parameters in task_list)
