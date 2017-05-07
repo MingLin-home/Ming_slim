@@ -327,10 +327,10 @@ if __name__ == '__main__':
     python extract_midlayer_features.py --num_gpus=4 --num_trainset_blocks=250 --num_testset_blocks=25 --num_perturb=2 --debug=True
     """
     parser = OptionParser()
-    parser.add_option('--num_gpus', type='int', dest='num_gpus', default=1, help='number of gpu.')
-    parser.add_option('--num_trainset_blocks', type='int', dest='num_trainset_blocks', default=1, help='number of data blocks to split the training dataset.')
+    parser.add_option('--num_gpus', type='int', dest='num_gpus', default=4, help='number of gpu.')
+    parser.add_option('--num_trainset_blocks', type='int', dest='num_trainset_blocks', default=128, help='number of data blocks to split the training dataset.')
     parser.add_option('--num_testset_blocks', type='int', dest='num_testset_blocks', default=1, help='number of data blocks to split the testing dataset.')
-    parser.add_option('--num_perturb', type='int', dest='num_perturb', default=1, help='number of random perturbation for each image.')
+    parser.add_option('--num_perturb', type='int', dest='num_perturb', default=10, help='number of random perturbation for each image.')
     parser.add_option('--debug', type='string', dest='debug', default=False, help='run debug code.')
     (options, args) = parser.parse_args()
     
