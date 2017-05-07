@@ -24,7 +24,7 @@ from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import vgg
-from preprocessing import vgg_preprocessing
+from preprocessing import cifar10_vgg_preprocessing
 
 slim = tf.contrib.slim
 
@@ -104,7 +104,8 @@ def load_cifar10():
 pass  # end def
 
 
-def extract_vgg_16_features(train_images, gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=-1, is_training=False, ):
+def extract_vgg_16_features(train_images, gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=-1, is_training=False,
+                            ):
     """
     pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix =  extract_vgg_16_features(...)
     :return:
@@ -115,7 +116,8 @@ def extract_vgg_16_features(train_images, gpu_device_config, real_gpu_device_con
     with tf.Graph().as_default(), tf.device(cpu_device_config):
         # image_input is a uint8 image, shape=[height, width, color]
         image_input = tf.placeholder(tf.uint8, shape=[32, 32, 3], name='image_input')
-        processed_image = vgg_preprocessing.preprocess_image(image_input, image_size, image_size, is_training=is_training)
+        processed_image = cifar10_vgg_preprocessing.preprocess_image(image_input, image_size, image_size, is_training=is_training,
+                                                                     )
         processed_images = tf.expand_dims(processed_image, 0)
     
         with slim.arg_scope(vgg.vgg_arg_scope()):
@@ -176,7 +178,7 @@ def extract_vgg_16_2016_08_28(options, parameters):
     num_trainset_blocks = options.num_trainset_blocks
     num_testset_blocks = options.num_testset_blocks
     
-    gpu_id, n_gpus = parameters
+    gpu_id, num_gpus = parameters
     model_name = 'vgg_16_2016_08_28'
     checkpoint_file = model_configure_dict[model_name]['model_filename']
     
@@ -191,6 +193,8 @@ def extract_vgg_16_2016_08_28(options, parameters):
     
 
     train_images, train_labels, test_images, test_labels = load_cifar10()
+    
+    
 
     if options.debug == 'True':
         train_images = train_images[0:500, :]
@@ -199,17 +203,17 @@ def extract_vgg_16_2016_08_28(options, parameters):
         test_labels = test_labels[0:500]
     pass  # end if
 
-    train_index_list = np.array_split(range(train_images.shape[0]), n_gpus)
+    train_index_list = np.array_split(range(train_images.shape[0]), num_gpus)
     train_subsplit_index = train_index_list[gpu_id]
     train_images = train_images[train_subsplit_index, :]
     train_labels = train_labels[train_subsplit_index]
 
-    test_index_list = np.array_split(range(test_images.shape[0]), n_gpus)
+    test_index_list = np.array_split(range(test_images.shape[0]), num_gpus)
     test_subsplit_index = test_index_list[gpu_id]
     test_images = test_images[test_subsplit_index, :]
     test_labels = test_labels[test_subsplit_index]
 
-    print('split=%d/%d, trainset size=%d, testset size=%d' % (gpu_id, n_gpus, train_images.shape[0], test_images.shape[0]))
+    print('split=%d/%d, trainset size=%d, testset size=%d' % (gpu_id, num_gpus, train_images.shape[0], test_images.shape[0]))
 
 
     trainset_block_index_list = np.array_split( range(train_images.shape[0]), num_trainset_blocks )
@@ -234,7 +238,9 @@ def extract_vgg_16_2016_08_28(options, parameters):
         
             if bool_should_run_trainset:
                 pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
-                    extract_vgg_16_features(train_images[trainset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, perturb_count=perturb_count, is_training=is_training)
+                    extract_vgg_16_features(train_images[trainset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config,
+                                            checkpoint_file, perturb_count=perturb_count, is_training=is_training,
+                                            )
                 
                 if not os.path.isfile(trainset_output_pool5_filename):
                     distutils.dir_util.mkpath(os.path.dirname(trainset_output_pool5_filename))
@@ -266,7 +272,8 @@ def extract_vgg_16_2016_08_28(options, parameters):
     
         if bool_should_run_testset:
             pool5_feature_matrix, fc6_feature_matrix, fc7_feature_matrix = \
-                extract_vgg_16_features(test_images[testset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, is_training=False)
+                extract_vgg_16_features(test_images[testset_block_index,:], gpu_device_config, real_gpu_device_config, cpu_device_config, checkpoint_file, is_training=False,
+                                        )
         
             # export to numpy files
             # if not os.path.isfile(testset_output_pool4_filename):
@@ -317,10 +324,10 @@ pass # end def
 
 if __name__ == '__main__':
     """
-    python extract_midlayer_features.py --n_gpus=4 --num_trainset_blocks=250 --num_testset_blocks=25 --num_perturb=2 --debug=True
+    python extract_midlayer_features.py --num_gpus=4 --num_trainset_blocks=250 --num_testset_blocks=25 --num_perturb=2 --debug=True
     """
     parser = OptionParser()
-    parser.add_option('--n_gpus', type='int', dest='n_gpus', default=1, help='number of gpu.')
+    parser.add_option('--num_gpus', type='int', dest='num_gpus', default=1, help='number of gpu.')
     parser.add_option('--num_trainset_blocks', type='int', dest='num_trainset_blocks', default=1, help='number of data blocks to split the training dataset.')
     parser.add_option('--num_testset_blocks', type='int', dest='num_testset_blocks', default=1, help='number of data blocks to split the testing dataset.')
     parser.add_option('--num_perturb', type='int', dest='num_perturb', default=1, help='number of random perturbation for each image.')
@@ -329,8 +336,8 @@ if __name__ == '__main__':
     
     # generate task list
     task_list = []
-    for gpu_id in range(options.n_gpus):
-        task_list.append([gpu_id, options.n_gpus])
+    for gpu_id in range(options.num_gpus):
+        task_list.append([gpu_id, options.num_gpus])
     pass # end for
 
-    par_results = Parallel(n_jobs=options.n_gpus, verbose=50, batch_size=1)(delayed(extract_vgg_16_2016_08_28)(options, par_for_parameters) for par_for_parameters in task_list)
+    par_results = Parallel(n_jobs=options.num_gpus, verbose=50, batch_size=1)(delayed(extract_vgg_16_2016_08_28)(options, par_for_parameters) for par_for_parameters in task_list)

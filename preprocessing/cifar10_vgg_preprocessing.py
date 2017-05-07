@@ -23,14 +23,49 @@ from __future__ import print_function
 import tensorflow as tf
 
 _PADDING = 4
+_R_MEAN = 123.68
+_G_MEAN = 116.78
+_B_MEAN = 103.94
 
 slim = tf.contrib.slim
 
 
+def _mean_image_subtraction(image, means):
+  """Subtracts the given means from each image channel.
+
+  For example:
+    means = [123.68, 116.779, 103.939]
+    image = _mean_image_subtraction(image, means)
+
+  Note that the rank of `image` must be known.
+
+  Args:
+    image: a tensor of size [height, width, C].
+    means: a C-vector of values to subtract from each channel.
+
+  Returns:
+    the centered image.
+
+  Raises:
+    ValueError: If the rank of `image` is unknown, if `image` has a rank other
+      than three or if the number of channels in `image` doesn't match the
+      number of values in `means`.
+  """
+  if image.get_shape().ndims != 3:
+    raise ValueError('Input must be of size [height, width, C>0]')
+  num_channels = image.get_shape().as_list()[-1]
+  if len(means) != num_channels:
+    raise ValueError('len(means) must match the number of channels')
+
+  channels = tf.split(axis=2, num_or_size_splits=num_channels, value=image)
+  for i in range(num_channels):
+    channels[i] -= means[i]
+  return tf.concat(axis=2, values=channels)
+
 def preprocess_for_train(image,
                          output_height,
                          output_width,
-                         padding=_PADDING):
+                        R_mean=0, G_mean=0, B_mean=0,padding=_PADDING,):
   """Preprocesses the given image for training.
 
   Note that the actual resizing scale is sampled from
@@ -45,7 +80,7 @@ def preprocess_for_train(image,
   Returns:
     A preprocessed image.
   """
-  tf.summary.image('image', tf.expand_dims(image, 0))
+  # tf.summary.image('image', tf.expand_dims(image, 0))
 
   # Transform the image to floats.
   image = tf.to_float(image)
@@ -61,7 +96,7 @@ def preprocess_for_train(image,
   # Randomly flip the image horizontally.
   distorted_image = tf.image.random_flip_left_right(distorted_image)
 
-  tf.summary.image('distorted_image', tf.expand_dims(distorted_image, 0))
+  # tf.summary.image('distorted_image', tf.expand_dims(distorted_image, 0))
 
   # Because these operations are not commutative, consider randomizing
   # the order their operation.
@@ -70,10 +105,16 @@ def preprocess_for_train(image,
   distorted_image = tf.image.random_contrast(distorted_image,
                                              lower=0.2, upper=1.8)
   # Subtract off the mean and divide by the variance of the pixels.
-  return tf.image.per_image_standardization(distorted_image)
+  distorted_image = tf.image.per_image_standardization(distorted_image)
+  
+  distorted_image = tf.image.resize_images(distorted_image,[output_height, output_width])
+
+  distorted_image = _mean_image_subtraction(distorted_image, [R_mean,G_mean,B_mean])
+  
+  return distorted_image
 
 
-def preprocess_for_eval(image, output_height, output_width):
+def preprocess_for_eval(image, output_height, output_width,R_mean,G_mean,B_mean):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -84,22 +125,25 @@ def preprocess_for_eval(image, output_height, output_width):
   Returns:
     A preprocessed image.
   """
-  tf.summary.image('image', tf.expand_dims(image, 0))
+  # tf.summary.image('image', tf.expand_dims(image, 0))
   # Transform the image to floats.
   image = tf.to_float(image)
   # image = tf.image.resize_images(image, (output_height, output_width))
 
   # Resize and crop if needed.
-  resized_image = tf.image.resize_image_with_crop_or_pad(image,
-                                                         output_width,
-                                                         output_height)
-  tf.summary.image('resized_image', tf.expand_dims(resized_image, 0))
+  distorted_image = tf.image.resize_images(image, [output_height, output_width])
+  # resized_image = tf.image.resize_image_with_crop_or_pad(image,
+  #                                                        output_width,
+  #                                                        output_height)
+  # tf.summary.image('resized_image', tf.expand_dims(resized_image, 0))
 
   # Subtract off the mean and divide by the variance of the pixels.
-  return tf.image.per_image_standardization(resized_image)
+  distorted_image = tf.image.per_image_standardization(distorted_image)
+  distorted_image = _mean_image_subtraction(distorted_image, [R_mean,G_mean,B_mean])
+  return distorted_image
 
 
-def preprocess_image(image, output_height, output_width, is_training=False):
+def preprocess_image(image, output_height, output_width, is_training=False, R_mean=_R_MEAN, G_mean=_G_MEAN,B_mean=_B_MEAN):
   """Preprocesses the given image.
 
   Args:
@@ -113,6 +157,6 @@ def preprocess_image(image, output_height, output_width, is_training=False):
     A preprocessed image.
   """
   if is_training:
-    return preprocess_for_train(image, output_height, output_width)
+    return preprocess_for_train(image, output_height, output_width, R_mean, G_mean, B_mean)
   else:
-    return preprocess_for_eval(image, output_height, output_width)
+    return preprocess_for_eval(image, output_height, output_width, R_mean, G_mean, B_mean)
