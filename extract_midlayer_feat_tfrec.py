@@ -122,7 +122,7 @@ def extract_vgg_16_features(train_images, gpu_device_config, real_gpu_device_con
     
         with slim.arg_scope(vgg.vgg_arg_scope()):
             with tf.device(gpu_device_config):  # since we mask GPU via $CUDA_VISIBLE_DEVICES, tf can only see '0' gpu now
-                logits, end_points = vgg.vgg_16(processed_images, num_classes=1000, is_training=is_training, dropout_keep_prob=0.1, )
+                logits, end_points = vgg.vgg_16(processed_images, num_classes=1000, is_training=is_training, dropout_keep_prob=0.5, )
             pass  # end with tf.device
         pass  # end with slim.arg_scope
     
