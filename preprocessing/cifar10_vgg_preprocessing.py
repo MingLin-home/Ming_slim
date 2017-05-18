@@ -100,14 +100,14 @@ def preprocess_for_train(image,
 
   # Because these operations are not commutative, consider randomizing
   # the order their operation.
-  distorted_image = tf.image.random_brightness(distorted_image,
-                                               max_delta=63)
-  distorted_image = tf.image.random_contrast(distorted_image,
-                                             lower=0.2, upper=1.8)
+  # distorted_image = tf.image.random_brightness(distorted_image,
+  #                                              max_delta=63)
+  # distorted_image = tf.image.random_contrast(distorted_image,
+  #                                            lower=0.2, upper=1.8)
   # Subtract off the mean and divide by the variance of the pixels.
   
   distorted_image = tf.image.resize_images(distorted_image,[output_height, output_width])
-  distorted_image = tf.image.per_image_standardization(distorted_image)
+  # distorted_image = tf.image.per_image_standardization(distorted_image)
 
   distorted_image = _mean_image_subtraction(distorted_image, [R_mean,G_mean,B_mean])
   
@@ -138,7 +138,7 @@ def preprocess_for_eval(image, output_height, output_width,R_mean,G_mean,B_mean)
   # tf.summary.image('resized_image', tf.expand_dims(resized_image, 0))
 
   # Subtract off the mean and divide by the variance of the pixels.
-  distorted_image = tf.image.per_image_standardization(distorted_image)
+  # distorted_image = tf.image.per_image_standardization(distorted_image)
   distorted_image = _mean_image_subtraction(distorted_image, [R_mean,G_mean,B_mean])
   return distorted_image
 
